@@ -1,0 +1,229 @@
+                     +--------------------------+
+                     |         CS 450           |
+                     | PROJECT 2: USER PROGRAMS |
+                     |     DESIGN DOCUMENT      |
+                     +--------------------------+
+
+---- GROUP ----
+
+>> Fill in the names and email addresses of your group members.
+
+Michael Evans  <evansmj@dukes.jmu.edu>
+Gary Checknita <checkngr@dukes.jmu.edu>
+Ben Kirtley    <kirtlepb@dukes.jmu.edu>
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for the
+>> TAs, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation, course
+>> text, lecture notes, and course staff.
+
+                           ARGUMENT PASSING
+                           ================
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+Thread.h: 
+	  struct semaphore p_sema
+	  struct semaphore c_sema
+	  int exit_status;	
+	  struct thread *child 
+	  struct thread *parent
+	  
+p_sema and c_sema are used for the parent to wait for its child to finish execution. 
+The parent will set it's own p_sema and the child will update the parent's semaphore
+then down it's own (using it's c_sema). Once the parent get's the child's exit_status
+the parents will then up it's child's semaphore so that it can complete execution. 
+
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe how you implemented argument parsing.  How do
+>> you arrange for the elements of argv[] to be in the right order?
+>> How do you avoid overflowing the stack page?
+
+We used uint32_t for all address and literal values. 
+Our team created a limit of 22 arguments for command line passing by 
+the size of the argv array which holds the addresses of all the tokens.
+below it the steps:
+1.  use strtok_t to tokenize the cmd_line and consume multiple white space
+    dilimeters.
+2.  initialize stk_ptr to esp;
+3.  copy each token to where stk_ptr is pointing to
+4.  save our stk_ptr address into argv[n]
+5.  push file_name on stack and save address in argv
+6.  push address of file_name on stk_ptr
+7.  word alignment is used if the current address is not divisble by 4 bytes (e.g. two words)
+8.  push argv[argc] = 0 for C coding standards
+9.  push all argv address which point to tokens on esp
+10. push argv address on stk_ptr
+11. push argc on stk_ptr
+12. push fake return address on stk_ptr
+13. set esp to stk_ptr
+14. set all used pointer to null to prevent hanging data
+15. exit
+
+The limit of 22 args in argv will prevent stack overflow with a segmentation fault
+and can be easily prevent with a process_exit() check.
+
+Also, we implemented a backwards for loop iterates through argv and places the token addresses in reverse order.
+
+---- RATIONALE ----
+
+>> A3: Why does Pintos implement strtok_r() but not strtok()?
+
+The functions strtok_r() and strtok() are similar.  The difference is
+that strtok_r() has an extra parameter to save the state of each call.  The
+strtok() function modifies the input string as it goes, and can make debugging
+more difficult.  This also means if it is multi-threaded it will be dangerous
+to use, because each local usage does not save the state of its progress.  
+strtok() uses a static buffer which is NOT thread safe. strtok_r uses the heap.
+
+
+>> A4: In Pintos, the kernel separates commands into a executable name
+>> and arguments.  In Unix-like systems, the shell does this
+>> separation.  Identify at least two advantages of the Unix approach.
+
+The unix approach is easier for coders to perform argument usage within 
+the implementation and creates easier implementation for shell usage for
+future upgrades. Also, less opportunity for bugs to be present in the kernel.
+
+
+---- SYNCHRONIZATION ----
+
+>> A5: The base implementation of process_execute() returns without
+>> waiting on the new executable to finish loading. As a result, Pintos
+>> would shut down before the program ever ran. Copy your code for
+>> synchronizing this timing here, and explain precisely how it works.
+>> What happens if the command-line specifies an executable that does
+>> not exist?
+
+We did not modify process_execute() for synchronization purposes. We modified
+process_wait(). 
+
+                     PROCESS_WAIT() CODE BELOW
+                     -------------------------
+	int
+	process_wait (tid_t child_tid)
+	{
+	  int return_value;
+	  struct thread * cur = thread_current();
+	  cur->child->tid = child_tid;
+	
+	  struct thread * child = cur->child;
+	
+	  child->parent = cur;
+	
+	  sema_down (&cur->p_sema); //block parent.
+	
+	  return_value = child->exit_status;
+	
+	  sema_up (&cur->child->c_sema);
+	
+	  return return_value;
+	}
+
+In our modification in process_wait() we first declare a return value and two thread structs. 
+Our return value holds the exit status of the child. The two structs are (1) for the parent 
+thread struct (e.g. thread *cur) and (2) one for the child (e.g. thread *child). We then 
+set the child as the parent's child and set the current thread to the child's parent. Next,
+we sema down the parents semaphore (e.g. sema_down (&cur->p_sema);) which causes the parent
+to block and allows the child to begin execution. The child will eventually up the parent's 
+semaphore allowing the parent to grab the child's exit status before the parent sema_ups it's
+child's semaphore (e.g. sema_up (&cur->child->c_sema);) This allows the child to die gracefully
+and let's the parent also keep the child's exit_status.
+
+
+If a excutable name is passed that is not in the file system than it will print the pintos code
+will print out "no such file or directory" due to the absence of such file (executable).
+This is a PintOS standardized in the base PintOS distribution code. 
+                             
+                             
+                             
+                             SYSTEM CALLS
+                             ============
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+static variables: 	
+            int syscall;
+			int fd;
+			char *buffer;
+			int size;
+			
+The syscall is the enumeration of the system call to perform in syscall.c.
+This is the first 32 bits pointed to by the stack pointer when the syscall_handler 
+function is being called. 
+
+fd is the file descriptor and can hold the values (0,1,2). This is used to know which
+buffer to read or write to such as STDIN, STDOUT, and STD_ERROR.
+
+buffer is a char pointer that points to a memory location to read or write to.
+
+size is the number of bytes to read or write.
+			
+---- ALGORITHMS ----
+
+>> B2: Describe your code for reading and writing user data from the
+>> kernel. In particular, explain how you validate the entire buffer
+>> that user-mode programs pass as parameters to the "read" and "write"
+>> data structures.
+
+syscall_handler is passed a interrupt frame which holds crucial data to
+process for system calls. This data is used in a switch statement to
+verify the syscall number and take execute it's proper syscall
+.
+The parse_system_args is used to pop fd, buffer, and size off the stack
+which is passed to its designated algorithm for processing.
+
+/*Write execution*/
+Determine the fd from 0,1,2 and uses putbuf accordingly. Otherwise it exits with -1.
+
+/*Read execution*/
+Determine the fd from 0,1,2 and use putchar within a for loop to store
+each character from the keyboard as they come in. Otherwise, return -1.
+
+
+                           SURVEY QUESTIONS
+                           ================
+
+Answering these questions is optional, but it will help us improve the
+course in future quarters.  Feel free to tell us anything you
+want--these questions are just to spur your thoughts.  You may also
+choose to respond anonymously in the course evaluations at the end of
+the quarter.
+
+>> In your opinion, was this assignment, or any one of the three problems
+>> in it, too easy or too hard?  Did it take too long or too little time?
+Too long because of the time it takes to understand what the true requirements
+are and its not a simple piece of paper with general explanations.
+
+>> Did you find that working on a particular part of the assignment gave
+>> you greater insight into some aspect of OS design?
+The stack pointer and pushing gave our team great insight on OS concepts.
+
+>> Is there some particular fact or hint we should give students in
+>> future quarters to help them solve the problems?  Conversely, did you
+>> find any of our guidance to be misleading?
+GDB is misleading. Conceptually and in our code our stack was fine but 
+the GDB would not verify argument passing however we found alternatives.
+
+Also, knowing sooner where the stack pointer is being set would have helped
+tremendously. 
+
+>> Do you have any suggestions for the TAs to more effectively assist
+>> students, either for future quarters or the remaining projects?
+
+>> Any other comments?
+
+

@@ -1,0 +1,38 @@
+Copying tests/userprog/exec-missing to scratch partition...
+qemu -no-kvm -hda /tmp/CFqgrukroh.dsk -m 4 -net none -nographic -monitor null
+PiLo hda1
+Loading..........
+Kernel command line: -q -f extract run exec-missing
+Pintos booting with 4,088 kB RAM...
+382 pages available in kernel pool.
+382 pages available in user pool.
+Calibrating timer...  157,081,600 loops/s.
+hda: 5,040 sectors (2 MB), model "QM00001", serial "QEMU HARDDISK"
+hda1: 175 sectors (87 kB), Pintos OS kernel (20)
+hda2: 4,096 sectors (2 MB), Pintos file system (21)
+hda3: 109 sectors (54 kB), Pintos scratch (22)
+filesys: using hda2
+scratch: using hda3
+Formatting file system...done.
+Boot complete.
+Extracting ustar archive from scratch device into file system...
+Putting 'exec-missing' into the file system...
+Erasing ustar archive...
+Executing 'exec-missing':
+(exec-missing) begin
+exec("no-such-file"): 4
+(exec-missing) end
+exec-missing: exit(0)
+Kernel PANIC at ../../lib/kernel/list.c:171 in list_insert(): assertion `is_interior (before) || is_tail (before)' failed.
+Call stack: 0xc00283fc 0xc00288b5 0xc0028a01 0xc0022818 0xc002a4e6 0xc0020269 0xc00208e9.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 56 ticks
+Thread: 1 idle ticks, 55 kernel ticks, 0 user ticks
+hda2 (filesys): 63 reads, 222 writes
+hda3 (scratch): 108 reads, 2 writes
+Console: 1259 characters output
+Keyboard: 0 keys pressed
+Exception: 0 page faults
+Powering off...

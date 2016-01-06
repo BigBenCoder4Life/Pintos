@@ -1,0 +1,32 @@
+Copying tests/userprog/bad-write to scratch partition...
+qemu -no-kvm -hda /tmp/SAE_iLitfy.dsk -m 4 -net none -nographic -monitor null
+PiLo hda1
+Loading..........
+Kernel command line: -q -f extract run bad-write
+Pintos booting with 4,088 kB RAM...
+382 pages available in kernel pool.
+382 pages available in user pool.
+Calibrating timer...  157,081,600 loops/s.
+hda: 5,040 sectors (2 MB), model "QM00001", serial "QEMU HARDDISK"
+hda1: 175 sectors (87 kB), Pintos OS kernel (20)
+hda2: 4,096 sectors (2 MB), Pintos file system (21)
+hda3: 109 sectors (54 kB), Pintos scratch (22)
+filesys: using hda2
+scratch: using hda3
+Formatting file system...done.
+Boot complete.
+Extracting ustar archive from scratch device into file system...
+Putting 'bad-write' into the file system...
+Erasing ustar archive...
+Executing 'bad-write':
+(bad-write) begin
+bad-write: exit(-1)
+Execution of 'bad-write' complete.
+Timer: 63 ticks
+Thread: 4 idle ticks, 58 kernel ticks, 1 user ticks
+hda2 (filesys): 63 reads, 222 writes
+hda3 (scratch): 108 reads, 2 writes
+Console: 870 characters output
+Keyboard: 0 keys pressed
+Exception: 1 page faults
+Powering off...
